@@ -1,256 +1,224 @@
 #include <iostream>
-#include <vector>
-#include <random>
-#include <thread>
-#include <chrono>
+#include <string>
+#include <limits>
 
 using namespace std;
-using namespace std::chrono;
 
-// ===== COLOR =====
-#define RESET   "\033[0m"
-#define RED     "\033[31m"
-#define GREEN   "\033[32m"
-#define YELLOW  "\033[33m"
-#define CYAN    "\033[36m"
+// ==========================================
+// BASE CLASS: Pet (Abstract Class)
+// ==========================================
+class Pet {
+protected:
+    string m_name;
+    int m_energy;
+    int m_fun;
 
-// ===== UTIL =====
-void clearScreen() {
-#ifdef _WIN32
-    system("cls");
-#else
-    system("clear");
-#endif
-}
+public:
+    // Konstruktor
+    Pet(string nama, int energi, int fun) 
+        : m_name(nama), m_energy(energi), m_fun(fun) {}
 
-void delay(int ms) {
-    this_thread::sleep_for(milliseconds(ms));
-}
+    // Virtual Destructor (Clean Code: Mencegah memory leak pada class turunan)
+    virtual ~Pet() = default;
 
-// Efeek typing atau mengetik
-void printSlow(string text, int speed = 20) {
-    for (char c : text) {
-        cout << c << flush;
-        delay(speed);
-    }
-}
+    // Fungsi konstan (const) karena hanya membaca data, tidak mengubahnya
+    virtual void talk() const;
+    
+    // Perilaku umum
+    void eat(int food);
+    void play(int toy);
 
-// Randomm
-int acak(int min, int max) {
-    static random_device rd;
-    static mt19937 gen(rd());
-    uniform_int_distribution<> distrib(min, max);
-    return distrib(gen);
-}
-
-// ===== Interfaces =====
-void box(string title) {
-    cout << CYAN << "\n==============================\n";
-    cout << "  " << title << endl;
-    cout << "==============================\n" << RESET;
-}
-
-void hpBar(int hp) {
-    cout << "HP: [";
-    int bars = hp ;
-
-    for (int i = 0; i < 20; i++) {
-        if (i < bars) cout << GREEN << "#" << RESET;
-        else cout << "-";
-    }
-    cout << "] " << hp << endl;
-}
-
-// ===== DATA STRUCT =====
-struct Player {
-    int hp = 100;
-    vector<string> inventory {"Potion"};
+    // Pure Virtual Functions (Wajib diimplementasikan oleh class turunan)
+    virtual void attack() = 0; 
+    virtual void specialSkill() = 0; 
 };
 
-struct Enemy {
-    string name;
-    int hp;
+void Pet::talk() const {
+    cout << "=== Status Pet ===" << endl;
+    cout << "Nama   : " << m_name << endl;
+    cout << "Energi : " << m_energy << endl;
+    cout << "Fun    : " << m_fun << endl;
+}
+
+void Pet::eat(int food) {
+    cout << "[" << m_name << "] Nyamm! Makanannya enak." << endl;
+    m_energy += food;
+    m_fun = max(0, m_fun - 2); // Logika: Makan mengurangi fun, tapi cegah nilai minus
+}
+
+void Pet::play(int toy) {
+    if (m_energy >= 2) {
+        cout << "[" << m_name << "] Hore!! Asik sekali bermain." << endl;
+        m_fun += toy;
+        m_energy -= 2;
+    } else {
+        cout << "[" << m_name << "] Terlalu lelah untuk bermain. Butuh makan!" << endl;
+    }
+}
+
+// ==========================================
+// DERIVED CLASS 1: Leviathan
+// ==========================================
+class Leviathan : public Pet {
+private:
+    int m_swimPoint;
+
+public:
+    Leviathan(string nama, int en, int fun, int sp) 
+        : Pet(nama, en, fun), m_swimPoint(sp) {
+        cout << ">> Leviathan baru telah menetas dari dasar laut! <<" << endl;
+    }
+
+    void talk() const override {
+        cout << "\n--- Leviathan Status ---" << endl;
+        cout << "Spesies     : Leviathan (Monster Air)" << endl;
+        Pet::talk(); // Memanggil fungsi talk() dari parent
+        cout << "Swim Point  : " << m_swimPoint << endl;
+        cout << "------------------------\n" << endl;
+    }
+
+    // Implementasi khusus perilaku Leviathan
+    void specialSkill() override {
+        if (m_swimPoint > 0) {
+            cout << "[" << m_name << "] Berenang dengan sangat cepat melintasi samudra! (Swim!)" << endl;
+            m_swimPoint--;
+            m_fun += 3;
+        } else {
+            cout << "[" << m_name << "] Kehabisan Swim Point!" << endl;
+        }
+    }
+
+    void attack() override {
+        if (m_energy >= 3) {
+            cout << "[" << m_name << "] Mengeluarkan serangan Water Blast! Swooosh!" << endl;
+            m_energy -= 3;
+        } else {
+            cout << "[" << m_name << "] Energi tidak cukup untuk menyerang." << endl;
+        }
+    }
 };
 
-// ===== INVENTORY =====
-void showInventory(const vector<string>& inv) {
-    box("INVENTORY");
+// ==========================================
+// DERIVED CLASS 2: Phoenix (Turunan Baru)
+// ==========================================
+class Phoenix : public Pet {
+private:
+    int m_firePower;
 
-    if (inv.empty()) {
-        cout << "Kosong\n";
-        return;
+public:
+    Phoenix(string nama, int en, int fun, int fp) 
+        : Pet(nama, en, fun), m_firePower(fp) {
+        cout << ">> Phoenix baru telah bangkit dari abu! <<" << endl;
     }
 
-    for (int i = 0; i < inv.size(); i++) {
-        cout << "[" << i+1 << "] " << inv[i] << endl;
+    void talk() const override {
+        cout << "\n--- Phoenix Status ---" << endl;
+        cout << "Spesies     : Phoenix (Burung Api)" << endl;
+        Pet::talk();
+        cout << "Fire Power  : " << m_firePower << endl;
+        cout << "----------------------\n" << endl;
     }
-}
 
-// ===== ITEM =====
-void addItem(vector<string>& inv) {
-    vector<string> pool {"Potion", "Elixir", "Bomb asap"};
-    int i = acak(0, pool.size()-1);
-
-    box("LOOT");
-    cout << YELLOW;
-    printSlow("Kamu menemukan: " + pool[i] + "\n");
-    cout << RESET;
-
-    inv.push_back(pool[i]);
-    delay(500);
-}
-
-void useItem(Player& p, bool inBattle = false) {
-    showInventory(p.inventory);
-    cout << "Pilih item: ";
-    int pilih;
-    cin >> pilih;
-
-    if (pilih < 1 || pilih > p.inventory.size()) return;
-
-    string item = p.inventory[pilih-1];
-
-    if (item == "Potion") {
-        cout << GREEN;
-        printSlow("HP +20\n");
-        cout << RESET;
-        p.hp += 20;
-    } else if (item == "Elixir") {
-        cout << GREEN;
-        printSlow("HP +50\n");
-        cout << RESET;
-        p.hp += 50;
-    } else if (item == "Bomb asap") {
-        if (!inBattle) {
-            printSlow("Bomb hanya bisa dipakai saat battle!\n");
-            return;
+    // Implementasi khusus perilaku Phoenix
+    void specialSkill() override {
+        if (m_energy >= 1) {
+            cout << "[" << m_name << "] Mengepakkan sayap api dan terbang ke langit! (Fly!)" << endl;
+            m_firePower += 2; // Terbang menambah kekuatan api
+            m_energy -= 1;
+        } else {
+            cout << "[" << m_name << "] Terlalu lelah untuk terbang." << endl;
         }
-        printSlow("Kamu melempar Bomb!\n");
     }
 
-    p.inventory.erase(p.inventory.begin() + (pilih-1));
-    delay(700);
-}
-
-// ===== BATTLE =====
-bool battle(Player& p) {
-    vector<string> names {"Goblin", "Orc", "Skeleton"};
-    Enemy e {names[acak(0,2)], acak(40,80)};
-
-    clearScreen();
-    box("BATTLE");
-    cout << RED;
-    printSlow("Musuh muncul: " + e.name + "!\n");
-    cout << RESET;
-    delay(800);
-
-    while (e.hp > 0 && p.hp > 0) {
-        clearScreen();
-        box("BATTLE");
-
-        cout << "Musuh: " << e.name << endl;
-        hpBar(e.hp);
-        cout << endl;
-        hpBar(p.hp);
-
-        cout << "\n[1] Attack\n[2] Use Item\nPilih: ";
-        int pilih;
-        cin >> pilih;
-
-        if (pilih == 1) {
-            int dmg = acak(10,25);
-            cout << GREEN;
-            printSlow("Kamu menyerang -" + to_string(dmg) + "\n");
-            cout << RESET;
-            e.hp -= dmg;
-        } else if (pilih == 2) {
-            useItem(p, true);
-            continue;
+    void attack() override {
+        if (m_firePower >= 3) {
+            cout << "[" << m_name << "] Menembakkan serangan Fireball! Booom!" << endl;
+            m_firePower -= 3;
+        } else {
+            cout << "[" << m_name << "] Fire Power tidak cukup! Harus terbang (Special Skill) dulu." << endl;
         }
-
-        delay(500);
-
-        if (e.hp > 0) {
-            int dmg = acak(5,20);
-            cout << RED;
-            printSlow(e.name + " menyerang kamu -" + to_string(dmg) + "\n");
-            cout << RESET;
-            p.hp -= dmg;
-        }
-
-        delay(800);
     }
+};
 
-    if (p.hp <= 0) {
-        cout << RED;
-        printSlow("Kamu kalah...NT kawan\n");
-        cout << RESET;
-        delay(1000);
-        return false;
-    }
-
-    cout << GREEN;
-    printSlow("Kamu menang! Uhuuyyyyy\n");
-    cout << RESET;
-
-    addItem(p.inventory);
-    return true;
-}
-
-// ===== EXPLORE =====
-bool explore(Player& p) {
-    clearScreen();
-    box("EXPLORE");
-
-    int event = acak(1,3);
-
-    if (event == 1) {
-        printSlow("Kamu berjalan... tidak ada apa-apa.\n");
-        delay(800);
-    } 
-    else if (event == 2) {
-        return battle(p);
-    } 
-    else {
-        addItem(p.inventory);
-    }
-
-    return true;
-}
-
-// ===== MAIN =====
+// ==========================================
+// MAIN FUNCTION & MENU
+// ==========================================
 int main() {
-    Player p;
-    bool hidup = true;
+    Pet* myPet = nullptr; // Menggunakan pointer polymorphic
+    int pilihan;
+    string namaPet;
 
-    while (hidup) {
-        clearScreen();
-        box("DUNGEON GAME");
+    cout << "===================================" << endl;
+    cout << "      WELCOME TO PET SIMULATOR     " << endl;
+    cout << "===================================" << endl;
+    
+    // Menu Pemilihan Pet
+    while (myPet == nullptr) {
+        cout << "Pilih spesies Pet awalmu:" << endl;
+        cout << "1. Leviathan (Air)" << endl;
+        cout << "2. Phoenix (Api)" << endl;
+        cout << "Pilih (1/2): ";
+        cin >> pilihan;
 
-        hpBar(p.hp);
-
-        cout << "\n[1] Explore\n";
-        cout << "[2] Inventory\n";
-        cout << "[3] Exit\n";
-        cout << "Pilih: ";
-
-
-        int pilih;
-        cin >> pilih;
-
-        switch (pilih) {
-            case 1: hidup = explore(p); break;
-            case 2:
-                useItem(p); 
-                cin.ignore(); cin.get();
-                break;
-            case 3: hidup = false; break;
+        if (pilihan == 1 || pilihan == 2) {
+            cout << "Berikan nama untuk Pet kamu: ";
+            cin >> namaPet;
+            
+            if (pilihan == 1) {
+                myPet = new Leviathan(namaPet, 10, 5, 5); // nama, energi, fun, swimPoint
+            } else {
+                myPet = new Phoenix(namaPet, 10, 5, 5);   // nama, energi, fun, firePower
+            }
+        } else {
+            cout << "Pilihan tidak valid. Coba lagi.\n" << endl;
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
         }
-
-        if (p.hp <= 0) hidup = false;
     }
 
-    clearScreen();
-    box("GAME OVER");
-    printSlow("Terima kasih sudah bermain...\n");
+    // Menu Interaksi (Game Loop)
+    bool isPlaying = true;
+    while (isPlaying) {
+        cout << "\n=== MENU INTERAKSI ===" << endl;
+        cout << "1. Cek Status (Talk)" << endl;
+        cout << "2. Beri Makan" << endl;
+        cout << "3. Ajak Bermain" << endl;
+        cout << "4. Gunakan Special Skill" << endl;
+        cout << "5. Lakukan Attack" << endl;
+        cout << "6. Keluar Game" << endl;
+        cout << "Aksi (1-6): ";
+        cin >> pilihan;
+        cout << endl;
+
+        switch (pilihan) {
+            case 1:
+                myPet->talk();
+                break;
+            case 2:
+                myPet->eat(5); // Tambah 5 energi
+                break;
+            case 3:
+                myPet->play(3); // Tambah 3 fun
+                break;
+            case 4:
+                // Berkat Polymorphism, kita tidak peduli apakah ini Leviathan atau Phoenix,
+                // program otomatis menjalankan skill yang benar (Swim atau Fly).
+                myPet->specialSkill();
+                break;
+            case 5:
+                myPet->attack();
+                break;
+            case 6:
+                cout << "Menyimpan data dan keluar... Sampai jumpa!" << endl;
+                isPlaying = false;
+                break;
+            default:
+                cout << "Aksi tidak dikenali!" << endl;
+                cin.clear();
+                cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                break;
+        }
+    }
+    delete myPet;
+    return 0;
 }
